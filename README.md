@@ -4,6 +4,8 @@ WhisperFree is a Windows-first desktop companion that turns push-to-talk speech 
 
 Note: Currently supports Python 11 and Python 12. 
 
+![Alt text](/assets/demo.png)
+
 ## Features
 - Push-to-talk hotkey (`CTRL+WIN`) with debounce so recordings only begin when both keys are held and stop cleanly when released.
 - OpenAI Whisper API backend with asynchronous transcription and toast feedback.
