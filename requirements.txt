@@ -1,0 +1,12 @@
+# WhisperFree dependencies
+loguru~=0.7.2
+pyqt6~=6.7.0
+sounddevice~=0.4.6
+numpy~=1.26.4
+openai>=1.40.0
+python-dotenv~=1.0.1
+pyperclip~=1.9.0
+keyboard~=0.13.5
+language-tool-python~=2.7.1
+pywin32>=306; platform_system=="Windows"
+pytest~=8.3.2
