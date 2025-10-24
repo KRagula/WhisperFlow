@@ -2,7 +2,7 @@
 
 WhisperFree is a Windows-first desktop companion that turns push-to-talk speech into clean text ready to paste anywhere. Hold `CTRL+WIN` to capture audio, release to stop, and the OpenAI Whisper API handles transcription before WhisperFree pastes the result into the field that currently has focus. A minimal overlay shows recording statuswhile a PyQt6 control panel manages microphones, service options, and history.
 
-Note: Currently supports Python 11 and Python 12. 
+Note: Currently supports Python 3.11 and Python 3.12. 
 
 ![Alt text](/assets/demo.png)
 
