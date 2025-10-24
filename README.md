@@ -92,7 +92,6 @@ If an API call fails, WhisperFree surfaces a toast so you can retry once connect
 
 ## Stretch Ideas
 - Streaming partial captions while holding the hotkey.
-- Language selection in settings.
 - Cross-platform hotkey/paste layers.
 - PyInstaller bundles for streamlined distribution.
 
