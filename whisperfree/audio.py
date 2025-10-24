@@ -20,7 +20,14 @@ logger = get_logger(__name__)
 
 def list_microphones() -> List[str]:
     """Return a list of input-capable device names."""
-    devices = sd.query_devices()
+    try:
+        devices = sd.query_devices()
+    except sd.PortAudioError as exc:
+        logger.bind(error=str(exc)).warning("Failed to query audio devices.")
+        return []
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.bind(error=str(exc)).exception("Unexpected error while querying audio devices.")
+        return []
     names: List[str] = []
     for device in devices:
         if device.get("max_input_channels", 0) > 0:
@@ -32,7 +39,14 @@ def resolve_device(device_name: Optional[str]) -> Optional[int]:
     """Translate a device name to a sounddevice index."""
     if device_name is None:
         return None
-    devices = sd.query_devices()
+    try:
+        devices = sd.query_devices()
+    except sd.PortAudioError as exc:
+        logger.bind(error=str(exc)).warning("Failed to query audio devices while resolving %s", device_name)
+        return None
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.bind(error=str(exc)).exception("Unexpected error while resolving audio device %s", device_name)
+        return None
     for idx, device in enumerate(devices):
         if device.get("name") == device_name and device.get("max_input_channels", 0) > 0:
             return idx

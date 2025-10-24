@@ -52,15 +52,22 @@ class TranscriptionRouter:
     def __init__(self, config: AppConfig):
         self._config = config
         self._api_client: Optional[ApiTranscriber] = None
+        self._api_client_key: Optional[str] = None
+        self._api_model_name: Optional[str] = None
 
     def _get_api(self) -> ApiTranscriber:
-        if not self._api_client:
-            api_key = self._config.resolve_api_key()
-            if not api_key:
-                raise RuntimeError(
-                    f"Missing OpenAI API key. Set environment variable {self._config.api_key_env}."
-                )
-            self._api_client = ApiTranscriber(api_key, model_name=self._config.api_whisper_model)
+        api_key = self._config.resolve_api_key()
+        if not api_key:
+            raise RuntimeError(f"Missing OpenAI API key. Set environment variable {self._config.api_key_env}.")
+        model_name = self._config.api_whisper_model
+        if (
+            not self._api_client
+            or self._api_client_key != api_key
+            or self._api_model_name != model_name
+        ):
+            self._api_client = ApiTranscriber(api_key, model_name=model_name)
+            self._api_client_key = api_key
+            self._api_model_name = model_name
         return self._api_client
 
     def transcribe(self, audio_bytes: bytes) -> TranscriptionResult:

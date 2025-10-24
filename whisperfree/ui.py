@@ -18,6 +18,54 @@ from whisperfree.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+_ENV_FILE_PATH = Path(__file__).resolve().parent.parent / ".env"
+
+
+class _ApiTestWorker(QtCore.QObject):
+    finished = QtCore.pyqtSignal(bool, object)
+
+    def __init__(self, api_key: str) -> None:
+        super().__init__()
+        self._api_key = api_key
+
+    @QtCore.pyqtSlot()
+    def run(self) -> None:
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=self._api_key)
+            client.models.list()
+        except OpenAIError as exc:
+            self.finished.emit(False, exc)
+        except Exception as exc:  # pragma: no cover - defensive
+            self.finished.emit(False, exc)
+        else:
+            self.finished.emit(True, None)
+
+
+def _update_env_file(key: str, value: str) -> None:
+    lines: list[str] = []
+    updated = False
+    if _ENV_FILE_PATH.exists():
+        existing = _ENV_FILE_PATH.read_text(encoding="utf-8").splitlines()
+        for line in existing:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                lines.append(line)
+                continue
+            current_key, sep, _ = line.partition("=")
+            if sep and current_key.strip() == key:
+                lines.append(f"{key}={value}")
+                updated = True
+            else:
+                lines.append(line)
+    else:
+        lines = []
+    if not updated:
+        lines.append(f"{key}={value}")
+    _ENV_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _ENV_FILE_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 class ControlPanelWindow(QtWidgets.QMainWindow):
     """Modern control panel with dashboard and settings pages."""
@@ -316,6 +364,10 @@ class SettingsPage(QtWidgets.QWidget):
         self._config = config
         self._on_save = on_save
         self._api_key = config.resolve_api_key() or ""
+        self._api_test_thread: Optional[QtCore.QThread] = None
+        self._api_test_worker: Optional[_ApiTestWorker] = None
+        self._pending_api_key: Optional[str] = None
+        self._mic_warning_shown = False
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(36, 32, 36, 32)
@@ -371,6 +423,7 @@ class SettingsPage(QtWidgets.QWidget):
         self.api_key_edit = QtWidgets.QLineEdit()
         self.api_key_edit.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
         self.test_api_button = QtWidgets.QPushButton("Test API")
+        self._test_api_default_label = self.test_api_button.text()
         api_row = _wrap_layout([(self.api_key_edit, 1), (self.test_api_button, 0)])
         form_layout.addRow("OpenAI API Key", api_row)
 
@@ -424,7 +477,20 @@ class SettingsPage(QtWidgets.QWidget):
     def _populate_microphones(self) -> None:
         current = self.mic_combo.currentText()
         self.mic_combo.clear()
-        devices = list_microphones()
+        try:
+            devices = list_microphones()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.bind(error=str(exc)).warning("Failed to refresh microphone list")
+            if not self._mic_warning_shown:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Microphones",
+                    "Unable to refresh microphone list. The system default input will be used.",
+                )
+                self._mic_warning_shown = True
+            devices = []
+        else:
+            self._mic_warning_shown = False
         self.mic_combo.addItem("System Default", userData=None)
         for device in devices:
             self.mic_combo.addItem(device, userData=device)
@@ -457,6 +523,10 @@ class SettingsPage(QtWidgets.QWidget):
 
         os.environ[self._config.api_key_env] = api_key
         self._api_key = api_key
+        try:
+            _update_env_file(self._config.api_key_env, api_key)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.bind(error=str(exc)).warning("Failed to update .env file with new API key.")
 
     def _handle_test_api(self) -> None:
         api_key = self.api_key_edit.text().strip()
@@ -464,22 +534,45 @@ class SettingsPage(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "OpenAI", "Enter an API key first.")
             return
 
-        try:
-            from openai import OpenAI
-
-            client = OpenAI(api_key=api_key)
-            client.models.list()
-        except OpenAIError as exc:
-            QtWidgets.QMessageBox.critical(
-                self,
-                "OpenAI",
-                f"API check failed:\n{exc}",
-            )
-            logger.bind(error=str(exc)).error("OpenAI test failed")
+        if self._api_test_thread and self._api_test_thread.isRunning():
             return
 
-        QtWidgets.QMessageBox.information(self, "OpenAI", "API key validated successfully.")
-        self._set_api_key(api_key)
+        self._pending_api_key = api_key
+        self.test_api_button.setEnabled(False)
+        self.test_api_button.setText("Testing...")
+
+        worker = _ApiTestWorker(api_key)
+        thread = QtCore.QThread(self)
+        self._api_test_worker = worker
+        self._api_test_thread = thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_api_test_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    @QtCore.pyqtSlot(bool, object)
+    def _on_api_test_finished(self, success: bool, error: object) -> None:
+        self.test_api_button.setEnabled(True)
+        self.test_api_button.setText(self._test_api_default_label)
+
+        if success:
+            QtWidgets.QMessageBox.information(self, "OpenAI", "API key validated successfully.")
+            if self._pending_api_key:
+                self._set_api_key(self._pending_api_key)
+        else:
+            message = str(error) if error else "Unknown error."
+            QtWidgets.QMessageBox.critical(self, "OpenAI", f"API check failed:\n{message}")
+            if error:
+                logger.bind(error=str(error)).error("OpenAI test failed")
+            else:  # pragma: no cover - defensive
+                logger.error("OpenAI test failed with unknown error")
+
+        self._pending_api_key = None
+        self._api_test_worker = None
+        self._api_test_thread = None
 
 
 class TrayController(QtWidgets.QSystemTrayIcon):

@@ -68,6 +68,7 @@ class TranscriptionHistory:
     def __init__(self, path: Path = HISTORY_PATH) -> None:
         self._path = path
         self._lock = threading.Lock()
+        self._total_words: Optional[int] = None
 
     def add_entry(self, text: str, timestamp: Optional[datetime] = None) -> TranscriptionEntry:
         """Append a transcription event to the history log."""
@@ -78,11 +79,13 @@ class TranscriptionHistory:
             _ensure_history_dir()
             with self._path.open("a", encoding="utf-8") as handle:
                 handle.write(payload + "\n")
+            self._total_words = (self._total_words or 0) + entry.words
         return entry
 
     def entries(self, limit: Optional[int] = None) -> List[TranscriptionEntry]:
         """Return history entries in reverse chronological order."""
         records: List[TranscriptionEntry] = []
+        total_words = 0
         if not self._path.exists():
             return records
         with self._lock:
@@ -98,13 +101,42 @@ class TranscriptionHistory:
             entry = TranscriptionEntry.from_dict(data)
             if entry:
                 records.append(entry)
+                total_words += entry.words
             if limit and len(records) >= limit:
                 break
+        if limit is None:
+            with self._lock:
+                self._total_words = total_words
         return records
 
     def total_word_count(self) -> int:
         """Return the total number of words transcribed."""
-        return sum(entry.words for entry in self.entries())
+        with self._lock:
+            if self._total_words is not None:
+                return self._total_words
+            if not self._path.exists():
+                self._total_words = 0
+                return 0
+            try:
+                raw_lines = self._path.read_text(encoding="utf-8").splitlines()
+            except OSError as exc:  # pragma: no cover - defensive
+                logger.warning("Unable to read history file for totals: %s", exc)
+                self._total_words = 0
+                return 0
+            total = 0
+            for line in raw_lines:
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError as json_exc:  # pragma: no cover - defensive
+                    logger.warning("Skipping corrupt history line during totals: %s (error=%s)", line, json_exc)
+                    continue
+                entry = TranscriptionEntry.from_dict(data)
+                if entry:
+                    total += entry.words
+            self._total_words = total
+            return total
 
     @staticmethod
     def group_by_day(entries: Iterable[TranscriptionEntry]) -> dict[str, List[TranscriptionEntry]]:
