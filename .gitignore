@@ -7,8 +7,10 @@ __pycache__/
 env/
 venv/
 
-# Environment variables
+# Environment variables / secrets (keep .env.example)
 .env
+.env.*
+!.env.example
 
 # Build artifacts
 build/
@@ -17,4 +19,10 @@ dist/
 
 # Logs
 whisperflow.log
+whisperfree.log
+
+# Local tooling and caches
+.pytest_cache/
+.claude/
+.superpowers/
 .gstack/
