@@ -10,10 +10,12 @@ from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 
+from whisperfree.models import DEFAULT_TRANSCRIPTION_MODEL
+
 
 CONFIG_DIR = Path.home() / ".whisperfree"
 CONFIG_PATH = CONFIG_DIR / "config.json"
-CONFIG_VERSION = 3
+CONFIG_VERSION = 4  # v4: whisper-1 default replaced by gpt-transcribe
 PROJECT_ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -30,7 +32,7 @@ class AppConfig:
     sample_rate: int = 16000
     language: str = "auto"
     api_key_env: str = "OPENAI_API_KEY"
-    api_whisper_model: str = "whisper-1"
+    api_whisper_model: str = DEFAULT_TRANSCRIPTION_MODEL
     append_newline: bool = True
     input_gain_db: float = 0.0
     overlay_enabled: bool = True
@@ -80,6 +82,10 @@ def load_config(path: Path = CONFIG_PATH) -> AppConfig:
         return AppConfig()
 
     config = AppConfig.from_dict(raw)
+    saved_version = config.version if isinstance(config.version, int) else 0
+    if saved_version < 4 and config.api_whisper_model == "whisper-1":
+        # whisper-1 was the old default, not a deliberate choice; move to the recommended model.
+        config.api_whisper_model = DEFAULT_TRANSCRIPTION_MODEL
     if config.version != CONFIG_VERSION:
         config.version = CONFIG_VERSION
         config.save(path)

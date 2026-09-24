@@ -154,7 +154,11 @@ class WhisperFreeController(QtCore.QObject):
     def _process_session(self, audio_bytes: bytes, duration: Optional[float] = None) -> None:
         logger.info("Processing transcription payload of {} bytes", len(audio_bytes))
         try:
-            result = self._transcriber.transcribe(audio_bytes, prompt=self._dictionary.build_prompt())
+            result = self._transcriber.transcribe(
+                audio_bytes,
+                prompt=self._dictionary.build_prompt(),
+                keywords=self._dictionary.terms(),
+            )
         except Exception as exc:
             logger.exception("Transcription failed: {}", exc)
             self.toast_requested.emit("Transcription failed", 2500)

@@ -187,6 +187,18 @@ class SettingsPage(QtWidgets.QWidget):
         # Transcription -------------------------------------------------------
         transcription = Card()
         transcription.body.addWidget(make_label("Transcription", "SectionTitle"))
+        self.model_combo = QtWidgets.QComboBox()
+        self.model_combo.setMinimumWidth(240)
+        for model_id, label_text in models.TRANSCRIPTION_MODELS:
+            self.model_combo.addItem(label_text, model_id)
+        transcription.body.addWidget(
+            SettingRow(
+                "Model",
+                "GPT Transcribe is OpenAI's recommended model; GPT-4o mini costs less.",
+                self.model_combo,
+            )
+        )
+        transcription.body.addWidget(divider())
         self.language_combo = QtWidgets.QComboBox()
         self.language_combo.setMinimumWidth(240)
         for code, label_text in models.LANGUAGE_CHOICES:
@@ -242,6 +254,9 @@ class SettingsPage(QtWidgets.QWidget):
         self.language_combo.currentIndexChanged.connect(
             lambda index: self._update(language=self.language_combo.itemData(index))
         )
+        self.model_combo.currentIndexChanged.connect(
+            lambda index: self._update(api_whisper_model=self.model_combo.itemData(index))
+        )
         self.show_key_button.clicked.connect(self._toggle_key_visibility)
         self.test_api_button.clicked.connect(self._handle_test_api)
         self.save_api_button.clicked.connect(self._handle_save_api)
@@ -262,6 +277,12 @@ class SettingsPage(QtWidgets.QWidget):
         language_index = self.language_combo.findData(self._config.language)
         if language_index >= 0:
             self.language_combo.setCurrentIndex(language_index)
+        model_index = self.model_combo.findData(self._config.api_whisper_model)
+        if model_index < 0:
+            # A model set by hand in config.json: show it rather than silently replacing it.
+            self.model_combo.addItem(self._config.api_whisper_model, self._config.api_whisper_model)
+            model_index = self.model_combo.count() - 1
+        self.model_combo.setCurrentIndex(model_index)
         self.gain_slider.setValue(int(round(self._config.input_gain_db * 10)))
         self._update_gain_label(self.gain_slider.value())
         self.api_key_edit.setText(self._config.resolve_api_key() or "")

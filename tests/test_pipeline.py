@@ -20,9 +20,11 @@ class _FakeTranscriber:
     def __init__(self, text):
         self.text = text
         self.prompts = []
+        self.keywords = []
 
-    def transcribe(self, audio_bytes, prompt=""):
+    def transcribe(self, audio_bytes, prompt="", keywords=()):
         self.prompts.append(prompt)
+        self.keywords.append(list(keywords))
         return TranscriptionResult(text=self.text)
 
 
@@ -49,6 +51,7 @@ def test_pipeline_applies_dictionary_and_records_duration(tmp_path, monkeypatch)
     WhisperFreeController._process_session(fake, b"RIFF", 3.0)
 
     assert fake._transcriber.prompts == ["Glossary: 5Point."]
+    assert fake._transcriber.keywords == [["5Point"]]
     assert pasted == ["I work at 5Point."]
     [saved] = fake._history.entries()
     assert saved.text == "I work at 5Point."
@@ -81,7 +84,7 @@ class _FakeTranscriptions:
 
 
 def _api_with_fake_client():
-    api = ApiTranscriber("sk-test")
+    api = ApiTranscriber("sk-test", model_name="whisper-1")
     transcriptions = _FakeTranscriptions()
     api._client = SimpleNamespace(audio=SimpleNamespace(transcriptions=transcriptions))
     return api, transcriptions
