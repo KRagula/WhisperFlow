@@ -77,7 +77,7 @@ QPainter-drawn icon (no new asset files); hotkey hint in the footer.
 - Three stat cards: Total words, Day streak, Avg. words/min.
   - Day streak: consecutive local calendar days ending today (or yesterday, if nothing
     yet today) with at least one entry.
-  - Avg. WPM: sum(words) / sum(duration minutes) over entries that have a duration;
+  - Avg. WPM: sum(words) / sum(duration minutes) over entries with a duration >= 1 s;
     shows "—" when no entries have a duration.
 - Slim hint banner: "Hold Ctrl+Win to dictate in any app".
 - 5 most recent transcriptions; "View all →" navigates to History.
@@ -147,8 +147,11 @@ History stores the final, pasted text.
 value name `WhisperFree`.
 - `launch_command()`:
   - Frozen (`sys.frozen`): `"<sys.executable>"`.
-  - Source: `"<dir of sys.executable>\pythonw.exe" -m whisperfree.app` (falls back to
-    `sys.executable` if `pythonw.exe` is absent).
+  - Source: `"<dir of sys.executable>\pythonw.exe" "<repo>un_whisperfree.pyw"` (falls back
+    to `sys.executable` if `pythonw.exe` is absent). The launcher script lives at the repo
+    root so the package imports regardless of the working directory at sign-in.
+- `AppConfig.resolve_api_key()` also loads `<repo>/.env` by absolute path, so a key kept
+  there still resolves when launched at sign-in (CWD is not the repo).
 - `is_enabled()` reads the registry (source of truth; no config field).
 - `set_enabled(bool)` writes or deletes the value; raises `OSError` on failure.
 - `refresh_if_stale()`: called at app start; if the value exists but differs from
