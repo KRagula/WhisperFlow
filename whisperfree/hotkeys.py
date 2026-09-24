@@ -17,7 +17,12 @@ logger = get_logger(__name__)
 
 def _normalise_key(name: str) -> str:
     """Normalise key names so comparisons stay consistent."""
-    normalised = keyboard.normalize_name(name or "")
+    if not name or not name.strip():
+        return ""
+    try:
+        normalised = keyboard.normalize_name(name)
+    except ValueError:
+        return ""
     lower = normalised.replace("_", " ").strip().lower()
     for prefix in ("left ", "right "):
         if lower.startswith(prefix):

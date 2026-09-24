@@ -57,7 +57,9 @@ class AppConfig:
 
     def resolve_api_key(self) -> Optional[str]:
         """Return the OpenAI API key using env var + .env convenience loading."""
-        load_dotenv()
+        # Load from the stable config directory first, then fall back to CWD .env
+        load_dotenv(CONFIG_DIR / ".env")
+        load_dotenv()  # CWD fallback for dev convenience
         return os.environ.get(self.api_key_env)
 
 

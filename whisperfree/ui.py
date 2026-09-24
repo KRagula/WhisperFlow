@@ -18,7 +18,7 @@ from whisperfree.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-_ENV_FILE_PATH = Path(__file__).resolve().parent.parent / ".env"
+_ENV_FILE_PATH = Path.home() / ".whisperfree" / ".env"
 
 
 class _ApiTestWorker(QtCore.QObject):
@@ -328,6 +328,7 @@ class HistoryItem(QtWidgets.QFrame):
 
     def __init__(self, entry: TranscriptionEntry, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
+        self._entry_text = entry.text.strip()
         self.setObjectName("HistoryItem")
         self.setStyleSheet(
             """
@@ -346,14 +347,44 @@ class HistoryItem(QtWidgets.QFrame):
         time_label.setStyleSheet("font-weight: 600; color: #574d72;")
         layout.addWidget(time_label)
 
-        text_label = QtWidgets.QLabel(entry.text.strip())
+        text_label = QtWidgets.QLabel(self._entry_text)
         text_label.setWordWrap(True)
+        text_label.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        text_label.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.IBeamCursor))
         text_label.setStyleSheet("color: #42385f;")
         layout.addWidget(text_label, 1)
+
+        copy_button = QtWidgets.QPushButton("Copy")
+        copy_button.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        copy_button.setFixedSize(56, 28)
+        copy_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #ece8fb;
+                border: none;
+                border-radius: 8px;
+                font-size: 11px;
+                font-weight: 600;
+                color: #4332d8;
+            }
+            QPushButton:hover {
+                background-color: #dbd4f7;
+            }
+            """
+        )
+        copy_button.clicked.connect(self._copy_text)
+        layout.addWidget(copy_button)
 
         words_label = QtWidgets.QLabel(f"{entry.words} words")
         words_label.setStyleSheet("color: #8c85a3; font-size: 12px;")
         layout.addWidget(words_label)
+
+    def _copy_text(self) -> None:
+        clipboard = QtWidgets.QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(self._entry_text)
 
 
 class SettingsPage(QtWidgets.QWidget):
@@ -667,5 +698,10 @@ def _friendly_username() -> str:
 
 
 def _asset_path(name: str) -> Path:
-    base = Path(__file__).resolve().parent.parent / "assets"
+    # PyInstaller sets sys._MEIPASS to the temp extraction directory
+    import sys
+    if getattr(sys, "_MEIPASS", None):
+        base = Path(sys._MEIPASS) / "assets"
+    else:
+        base = Path(__file__).resolve().parent.parent / "assets"
     return base / name

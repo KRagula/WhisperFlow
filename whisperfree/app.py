@@ -132,7 +132,6 @@ class WhisperFreeController(QtCore.QObject):
             if self._config.overlay_enabled:
                 self.idle_requested.emit()
             return
-        # self.toast_requested.emit("Transcribing…", 1200)
         self._executor.submit(self._process_session, audio_bytes)
 
     def _process_session(self, audio_bytes: bytes) -> None:
@@ -159,10 +158,8 @@ class WhisperFreeController(QtCore.QObject):
         )
         entry = self._history.add_entry(transcribed_text)
         self.history_entry_added.emit(entry)
-        # if success:
-        #     self.toast_requested.emit("Pasted!", 1500)
-        # else:
-        #     self.toast_requested.emit("Paste failed", 2500)
+        if not success:
+            self.toast_requested.emit("Paste failed", 2500)
         self.idle_requested.emit()
 
     @property
@@ -183,7 +180,10 @@ def main() -> None:
 
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("WhisperFree")
-    icon_path = Path(__file__).resolve().parent.parent / "assets" / "app_icon.ico"
+    if getattr(sys, "_MEIPASS", None):
+        icon_path = Path(sys._MEIPASS) / "assets" / "app_icon.ico"
+    else:
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "app_icon.ico"
     if icon_path.exists():
         app.setWindowIcon(QtGui.QIcon(str(icon_path)))  # type: ignore[name-defined]
 
