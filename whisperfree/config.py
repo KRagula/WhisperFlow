@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 CONFIG_DIR = Path.home() / ".whisperfree"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 CONFIG_VERSION = 3
+PROJECT_ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 
 def _ensure_config_dir() -> None:
@@ -57,8 +58,9 @@ class AppConfig:
 
     def resolve_api_key(self) -> Optional[str]:
         """Return the OpenAI API key using env var + .env convenience loading."""
-        # Load from the stable config directory first, then fall back to CWD .env
+        # Earlier files win: load_dotenv never overrides variables that are already set.
         load_dotenv(CONFIG_DIR / ".env")
+        load_dotenv(PROJECT_ENV_PATH)  # repo-root .env, found by absolute path (autostart CWD differs)
         load_dotenv()  # CWD fallback for dev convenience
         return os.environ.get(self.api_key_env)
 
