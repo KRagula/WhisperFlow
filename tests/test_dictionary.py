@@ -99,6 +99,12 @@ def test_blank_replacement_removes_phrase_and_collapses_spaces(tmp_path):
     assert d.apply_replacements("um") == ""
 
 
+def test_non_blank_replacement_preserves_other_spacing(tmp_path):
+    d = make(tmp_path)
+    d.add_replacement("foo", "bar")
+    assert d.apply_replacements("  a  b foo ") == "  a  b bar "
+
+
 def test_text_without_matches_is_unchanged(tmp_path):
     d = make(tmp_path)
     d.add_replacement("foo", "bar")

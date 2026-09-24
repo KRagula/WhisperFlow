@@ -83,9 +83,19 @@ class Dictionary:
             pattern, lookup = self._pattern, self._lookup
         if pattern is None or not text:
             return text
-        result = pattern.sub(lambda m: lookup.get(m.group(0).casefold(), m.group(0)), text)
+        removed = []
+
+        def _sub(m: "re.Match[str]") -> str:
+            replacement = lookup.get(m.group(0).casefold(), m.group(0))
+            if not replacement:
+                removed.append(True)
+            return replacement
+
+        result = pattern.sub(_sub, text)
         if result == text:
             return text
+        if not removed:
+            return result
         return re.sub(r"[ \t]{2,}", " ", result).strip()
 
     # ------------------------------------------------------------------ mutations
