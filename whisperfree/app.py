@@ -90,18 +90,18 @@ class WhisperFreeController(QtCore.QObject):
         self._app.quit()
 
     def open_settings(self) -> None:
-        """Display the settings dialog."""
-        if self._panel_window and self._panel_window.isVisible():
-            self._panel_window.raise_()
-            self._panel_window.activateWindow()
-            return
-        self._panel_window = ControlPanelWindow(
-            config=self._config,
-            on_save=self._handle_config_saved,
-            history=self._history,
-        )
-        self.history_entry_added.connect(self._panel_window.handle_history_entry)
+        """Display the control panel, creating it on first use."""
+        if self._panel_window is None:
+            self._panel_window = ControlPanelWindow(
+                config=self._config,
+                on_save=self._handle_config_saved,
+                history=self._history,
+                dictionary=self._dictionary,
+            )
+            self.history_entry_added.connect(self._panel_window.handle_history_entry)
         self._panel_window.show()
+        self._panel_window.raise_()
+        self._panel_window.activateWindow()
 
     def _handle_config_saved(self, config: AppConfig) -> None:
         logger.info("Configuration saved.")
