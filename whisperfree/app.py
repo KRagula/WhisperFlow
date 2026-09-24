@@ -11,8 +11,10 @@ from typing import Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+from whisperfree import startup
 from whisperfree.audio import AudioRecorder
 from whisperfree.config import AppConfig, load_config
+from whisperfree.dictionary import Dictionary
 from whisperfree.history import TranscriptionHistory
 from whisperfree.hotkeys import HotkeyListener
 from whisperfree.overlay import OverlayWindow
@@ -54,6 +56,7 @@ class WhisperFreeController(QtCore.QObject):
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="whisperfree")
         self._transcriber = TranscriptionRouter(config)
         self._history = TranscriptionHistory()
+        self._dictionary = Dictionary()
         self._audio = AudioRecorder(
             config=config,
             level_callback=self._handle_level_update,
@@ -132,21 +135,22 @@ class WhisperFreeController(QtCore.QObject):
             if self._config.overlay_enabled:
                 self.idle_requested.emit()
             return
-        self._executor.submit(self._process_session, audio_bytes)
+        duration = self._audio.last_duration
+        self._executor.submit(self._process_session, audio_bytes, duration)
 
-    def _process_session(self, audio_bytes: bytes) -> None:
+    def _process_session(self, audio_bytes: bytes, duration: Optional[float] = None) -> None:
         logger.info("Processing transcription payload of {} bytes", len(audio_bytes))
         try:
-            result = self._transcriber.transcribe(audio_bytes)
+            result = self._transcriber.transcribe(audio_bytes, prompt=self._dictionary.build_prompt())
         except Exception as exc:
-            logger.exception("Transcription failed: %s", exc)
+            logger.exception("Transcription failed: {}", exc)
             self.toast_requested.emit("Transcription failed", 2500)
             self.idle_requested.emit()
             return
 
-        transcribed_text = result.text
+        transcribed_text = self._dictionary.apply_replacements(result.text).strip()
 
-        if not transcribed_text.strip():
+        if not transcribed_text:
             self.toast_requested.emit("Nothing to paste", 2000)
             self.idle_requested.emit()
             return
@@ -156,7 +160,7 @@ class WhisperFreeController(QtCore.QObject):
             append_newline=self._config.append_newline,
             retries=self._config.paste_retries,
         )
-        entry = self._history.add_entry(transcribed_text)
+        entry = self._history.add_entry(transcribed_text, duration=duration)
         self.history_entry_added.emit(entry)
         if not success:
             self.toast_requested.emit("Paste failed", 2500)
@@ -177,6 +181,11 @@ def main() -> None:
     """Launch the WhisperFree desktop app."""
     setup_logging()
     config = load_config()
+
+    try:
+        startup.refresh_if_stale()
+    except OSError as exc:
+        logger.warning("Could not refresh launch-on-startup entry: {}", exc)
 
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("WhisperFree")

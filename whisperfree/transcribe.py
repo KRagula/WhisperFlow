@@ -29,14 +29,16 @@ class ApiTranscriber:
         self._client = OpenAI(api_key=api_key)
         self._model_name = model_name
 
-    def transcribe(self, audio_bytes: bytes, language: str = "auto") -> TranscriptionResult:
+    def transcribe(self, audio_bytes: bytes, language: str = "auto", prompt: str = "") -> TranscriptionResult:
         if not audio_bytes:
             return TranscriptionResult(text="", language=language)
         file_tuple = ("audio.wav", audio_bytes, "audio/wav")
         params = {"model": self._model_name, "file": file_tuple}
         if language and language.lower() != "auto":
             params["language"] = language
-        logger.info("Invoking OpenAI Whisper API model=%s", self._model_name)
+        if prompt:
+            params["prompt"] = prompt
+        logger.info("Invoking OpenAI Whisper API model={}", self._model_name)
         response = self._client.audio.transcriptions.create(**params)
         detected_language = getattr(response, "language", language)
         text = response.text.strip() if response.text else ""
@@ -70,7 +72,7 @@ class TranscriptionRouter:
             self._api_model_name = model_name
         return self._api_client
 
-    def transcribe(self, audio_bytes: bytes) -> TranscriptionResult:
+    def transcribe(self, audio_bytes: bytes, prompt: str = "") -> TranscriptionResult:
         """Transcribe audio using the OpenAI Whisper API."""
-        return self._get_api().transcribe(audio_bytes, language=self._config.language)
+        return self._get_api().transcribe(audio_bytes, language=self._config.language, prompt=prompt)
 
