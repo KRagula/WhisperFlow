@@ -38,6 +38,7 @@ def test_resolve_api_key_reads_project_env(monkeypatch, tmp_path):
     env_file = tmp_path / ".env"
     env_file.write_text("WF_TEST_API_KEY=from-project-env\n", encoding="utf-8")
     monkeypatch.setattr(config_module, "PROJECT_ENV_PATH", env_file)
+    monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path / "config")
     monkeypatch.setenv("WF_TEST_API_KEY", "placeholder")  # records original state for undo
     monkeypatch.delenv("WF_TEST_API_KEY")
     monkeypatch.chdir(tmp_path.parent)  # CWD is not the project
