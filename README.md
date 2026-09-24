@@ -1,6 +1,6 @@
 # WhisperFree (WhisperFlow)
 
-WhisperFree is a Windows-first desktop companion that turns push-to-talk speech into clean text ready to paste anywhere. Hold `CTRL+WIN` to capture audio, release to stop, and the OpenAI Whisper API handles transcription before WhisperFree pastes the result into the field that currently has focus. A minimal overlay shows recording status while a PyQt6 control panel manages microphones, service options, dictionary, and history.
+WhisperFree is a Windows-first desktop companion that turns push-to-talk speech into clean text ready to paste anywhere. Hold `CTRL+WIN` to capture audio, release to stop, and OpenAI's transcription API (`gpt-transcribe` by default) handles transcription before WhisperFree pastes the result into the field that currently has focus. A minimal overlay shows recording status while a PyQt6 control panel manages microphones, service options, dictionary, and history.
 
 Note: Currently supports Python 3.11 and Python 3.12. 
 
@@ -8,14 +8,14 @@ Note: Currently supports Python 3.11 and Python 3.12.
 
 ## Features
 - Push-to-talk hotkey (`CTRL+WIN`) with debounce so recordings only begin when both keys are held and stop cleanly when released.
-- OpenAI Whisper API backend with asynchronous transcription and toast feedback.
+- OpenAI transcription backend (`gpt-transcribe` by default; `gpt-4o-mini-transcribe` or legacy `whisper-1` selectable) with asynchronous transcription and toast feedback.
 - Persistent transcription history with daily grouping and rolling word counts.
 - Clipboard pipeline that copies the transcript, sends `Ctrl+V`, optionally presses `Enter`, and restores the previous clipboard.
 - PyQt6 system tray UI with microphone selectors, gain control, API testing, and an always-on-top overlay that animates or collapses to a thin idle line.
 - Voquill-style control panel with a sidebar and four pages:
   - **Home** - greeting, stat cards (total words, day streak, average words/min), and the 5 most recent transcriptions.
   - **History** - searchable, day-grouped history with a copy button per entry; large histories render lazily so the page stays responsive.
-  - **Dictionary** - **Terms** are spelling hints (names, product words, acronyms) sent to Whisper as a prompt to improve recognition; **Replacements** are whole-word, case-insensitive "when I say X, paste Y" rules applied after transcription (a blank replacement removes the phrase entirely).
+  - **Dictionary** - **Terms** are spelling hints (names, product words, acronyms) sent to the transcriber to improve recognition (as `keywords` for `gpt-transcribe`, as a glossary prompt for older models); **Replacements** are whole-word, case-insensitive "when I say X, paste Y" rules applied after transcription (a blank replacement removes the phrase entirely).
   - **Settings** - General, Audio, Transcription, and OpenAI sections. Toggles, microphone, gain, and language apply instantly; the API key requires Save (or a successful Test) before it is persisted.
 - Launch on startup toggle (Settings -> General) that registers WhisperFree in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 
@@ -76,7 +76,7 @@ whisperfree/
    python -m pip install -r requirements.txt
    ```
 4. **Configure environment**  
-   Copy `.env.example` to `.env` and set `OPENAI_API_KEY` to use the OpenAI Whisper or grammar APIs.
+   Copy `.env.example` to `.env` and set `OPENAI_API_KEY` to use the OpenAI transcription API.
 5. **Launch WhisperFree**
    ```powershell
    python -m whisperfree.app
@@ -85,7 +85,7 @@ whisperfree/
 
 ## Configuration Highlights
 - **Microphone selector** - Populated from PortAudio; refresh to pick up devices that appear mid-session. Defaults back to the system device if the chosen device disappears.
-- **OpenAI transcription** - Audio is sent to the OpenAI Whisper API for recognition.
+- **OpenAI transcription** - Settings -> Transcription -> Model picks the model: `gpt-transcribe` (recommended, $0.0045/min), `gpt-4o-mini-transcribe` (cheapest, $0.003/min), or legacy `whisper-1` ($0.006/min). Configs still on the old `whisper-1` default are moved to `gpt-transcribe` automatically.
 - **Input gain slider** - Apply gain live to accommodate quieter microphones.
 - **Overlay toggle** - Enable or hide the recording overlay without restarting the app.
 - **Paste options** - Toggle `append newline after paste` and tune retry counts in the config file.
@@ -103,7 +103,7 @@ WhisperFree keeps its data under `~/.whisperfree/`:
 
 ## Runtime Behaviour
 1. Hold `CTRL+WIN` - the overlay animates and audio buffers at 16 kHz mono.
-2. Release - WhisperFree stops recording, builds a WAV in memory, and sends it to the OpenAI Whisper API for transcription.
+2. Release - WhisperFree stops recording, builds a WAV in memory, and sends it to the OpenAI transcription API.
 3. Paste - The recognized text is sent straight to the active window.
 4. Paste - WhisperFree updates the clipboard, issues `Ctrl+V`, optionally presses `Enter`, and restores the previous clipboard contents.
 5. Overlay returns to idle and a toast conveys success, fallbacks, or errors.
@@ -111,7 +111,7 @@ WhisperFree keeps its data under `~/.whisperfree/`:
 If an API call fails, WhisperFree surfaces a toast so you can retry once connectivity is restored. Microphone errors, silent recordings, and paste failures are surfaced non-intrusively with retries where sensible.
 
 ## Security & Privacy
-- Audio is sent to the OpenAI Whisper API for transcription; recordings are held in memory only for the duration of the request.
+- Audio is sent to the OpenAI transcription API; recordings are held in memory only for the duration of the request.
 - No recordings are saved by default (toggle the debug path in code if required).
 - Clipboard contents are restored by default after pasting.
 - API keys stay in environment variables; nothing secret is written to disk unless you choose to export it.
