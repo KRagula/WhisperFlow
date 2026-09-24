@@ -88,6 +88,7 @@ whisperfree/
 - **OpenAI transcription** - Audio is sent to the OpenAI Whisper API for recognition.
 - **Input gain slider** - Apply gain live to accommodate quieter microphones.
 - **Overlay toggle** - Enable or hide the recording overlay without restarting the app.
+- **Dictation sounds** - A rising two-note chime plays when you press the hotkey and a falling one when you release it. Turn it off with Settings -> General -> Play sounds.
 - **Paste options** - Toggle `append newline after paste` and tune retry counts in the config file.
 - **Dictionary** - Terms and replacement rules persist to `~/.whisperfree/dictionary.json`; edits from the Dictionary page save immediately, no restart required.
 - **Launch on startup** - The Settings -> General toggle writes (or removes) the `WhisperFree` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Running from source it launches `pythonw.exe run_whisperfree.pyw` from the repo root; a PyInstaller build launches the built executable directly.
