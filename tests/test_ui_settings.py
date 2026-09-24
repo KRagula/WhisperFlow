@@ -59,28 +59,6 @@ def test_toggles_apply_immediately(qapp, env):
     assert state["saves"] == 2 and state["changes"] == 2
 
 
-def test_model_picker_defaults_and_applies_immediately(qapp, env):
-    config, page, state = env
-    assert page.model_combo.currentData() == "gpt-transcribe"
-    assert [page.model_combo.itemData(i) for i in range(page.model_combo.count())] == [
-        "gpt-transcribe",
-        "gpt-4o-mini-transcribe",
-        "whisper-1",
-    ]
-    page.model_combo.setCurrentIndex(page.model_combo.findData("gpt-4o-mini-transcribe"))
-    assert config.api_whisper_model == "gpt-4o-mini-transcribe"
-    assert state["saves"] == 1
-
-
-def test_model_picker_keeps_unlisted_model_from_config(qapp, env):
-    config, _page, state = env
-    config.api_whisper_model = "gpt-4o-transcribe"
-    page = SettingsPage(config, lambda cfg: None)
-    assert page.model_combo.currentData() == "gpt-4o-transcribe"
-    assert config.api_whisper_model == "gpt-4o-transcribe"
-    assert state["saves"] == 0
-
-
 def test_mic_and_language_apply_immediately(qapp, env):
     config, page, state = env
     page.mic_combo.setCurrentIndex(page.mic_combo.findText("Mic A"))
@@ -154,3 +132,25 @@ def test_shutdown_is_safe_without_running_thread(qapp, env):
     config, page, state = env
     page.shutdown()  # no thread yet
     assert page._api_test_thread is None
+
+
+def test_model_picker_defaults_and_applies_immediately(qapp, env):
+    config, page, state = env
+    assert page.model_combo.currentData() == "gpt-transcribe"
+    assert [page.model_combo.itemData(i) for i in range(page.model_combo.count())] == [
+        "gpt-transcribe",
+        "gpt-4o-mini-transcribe",
+        "whisper-1",
+    ]
+    page.model_combo.setCurrentIndex(page.model_combo.findData("gpt-4o-mini-transcribe"))
+    assert config.api_whisper_model == "gpt-4o-mini-transcribe"
+    assert state["saves"] == 1
+
+
+def test_model_picker_keeps_unlisted_model_from_config(qapp, env):
+    config, _page, state = env
+    config.api_whisper_model = "gpt-4o-transcribe"
+    page = SettingsPage(config, lambda cfg: None)
+    assert page.model_combo.currentData() == "gpt-4o-transcribe"
+    assert config.api_whisper_model == "gpt-4o-transcribe"
+    assert state["saves"] == 0
