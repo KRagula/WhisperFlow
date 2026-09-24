@@ -126,3 +126,9 @@ def test_save_blank_api_key_is_rejected(qapp, env):
     page.save_api_button.click()
     assert os.environ["WF_SETTINGS_TEST_KEY"] == "sk-original"
     assert page.api_status_label.text() == "Enter an API key first."
+
+
+def test_shutdown_is_safe_without_running_thread(qapp, env):
+    config, page, state = env
+    page.shutdown()  # no thread yet
+    assert page._api_test_thread is None

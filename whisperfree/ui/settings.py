@@ -231,6 +231,10 @@ class SettingsPage(QtWidgets.QWidget):
         self.test_api_button.clicked.connect(self._handle_test_api)
         self.save_api_button.clicked.connect(self._handle_save_api)
 
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.shutdown)
+
     # ------------------------------------------------------------------ loading
 
     def _apply_config(self) -> None:
@@ -377,3 +381,10 @@ class SettingsPage(QtWidgets.QWidget):
         self._pending_api_key = None
         self._api_test_worker = None
         self._api_test_thread = None
+
+    def shutdown(self) -> None:
+        """Wait briefly for an in-flight API test so Qt never destroys a running thread."""
+        thread = self._api_test_thread
+        if thread is not None and thread.isRunning():
+            thread.quit()
+            thread.wait(3000)
