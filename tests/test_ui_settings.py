@@ -59,6 +59,14 @@ def test_toggles_apply_immediately(qapp, env):
     assert state["saves"] == 2 and state["changes"] == 2
 
 
+def test_sound_toggle_applies_immediately(qapp, env):
+    config, page, state = env
+    assert page.sound_toggle.isChecked() is True
+    page.sound_toggle.click()
+    assert config.sound_enabled is False
+    assert state["saves"] == 1 and state["changes"] == 1
+
+
 def test_mic_and_language_apply_immediately(qapp, env):
     config, page, state = env
     page.mic_combo.setCurrentIndex(page.mic_combo.findText("Mic A"))

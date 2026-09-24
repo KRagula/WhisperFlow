@@ -34,6 +34,7 @@ class AppConfig:
     append_newline: bool = True
     input_gain_db: float = 0.0
     overlay_enabled: bool = True
+    sound_enabled: bool = True
     paste_retries: int = 1
     hotkey_modifier_primary: str = "ctrl"
     hotkey_modifier_secondary: str = "win"

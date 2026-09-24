@@ -136,6 +136,15 @@ class SettingsPage(QtWidgets.QWidget):
             )
         )
         general.body.addWidget(divider())
+        self.sound_toggle = ToggleSwitch()
+        general.body.addWidget(
+            SettingRow(
+                "Play sounds",
+                "Chime when you press and release the dictation hotkey.",
+                self.sound_toggle,
+            )
+        )
+        general.body.addWidget(divider())
         self.newline_toggle = ToggleSwitch()
         general.body.addWidget(
             SettingRow("Press Enter after pasting", "Append a newline after each transcription.", self.newline_toggle)
@@ -225,6 +234,7 @@ class SettingsPage(QtWidgets.QWidget):
 
         self.startup_toggle.toggled.connect(self._handle_startup_toggled)
         self.overlay_toggle.toggled.connect(lambda checked: self._update(overlay_enabled=checked))
+        self.sound_toggle.toggled.connect(lambda checked: self._update(sound_enabled=checked))
         self.newline_toggle.toggled.connect(lambda checked: self._update(append_newline=checked))
         self.mic_combo.currentIndexChanged.connect(self._handle_mic_changed)
         self.refresh_mics_button.clicked.connect(lambda: self._populate_microphones(self.mic_combo.currentData()))
@@ -246,6 +256,7 @@ class SettingsPage(QtWidgets.QWidget):
         if startup.is_supported():
             self.startup_toggle.setChecked(startup.is_enabled())
         self.overlay_toggle.setChecked(self._config.overlay_enabled)
+        self.sound_toggle.setChecked(self._config.sound_enabled)
         self.newline_toggle.setChecked(self._config.append_newline)
         self._populate_microphones(self._config.mic_device_name)
         language_index = self.language_combo.findData(self._config.language)

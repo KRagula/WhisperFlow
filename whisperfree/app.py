@@ -19,6 +19,7 @@ from whisperfree.history import TranscriptionHistory
 from whisperfree.hotkeys import HotkeyListener
 from whisperfree.overlay import OverlayWindow
 from whisperfree.paste import paste_text
+from whisperfree.sounds import ChimePlayer
 from whisperfree.transcribe import TranscriptionRouter
 from whisperfree.ui import ControlPanelWindow, TrayController
 from whisperfree.ui.theme import apply_theme
@@ -59,6 +60,7 @@ class WhisperFreeController(QtCore.QObject):
         self._transcriber = TranscriptionRouter(config)
         self._history = TranscriptionHistory()
         self._dictionary = Dictionary()
+        self._chimes = ChimePlayer()
         self._audio = AudioRecorder(
             config=config,
             level_callback=self._handle_level_update,
@@ -129,12 +131,17 @@ class WhisperFreeController(QtCore.QObject):
             logger.exception("Failed to start audio capture: %s", exc)
             self.toast_requested.emit("Audio input error", 2500)
             return
+        if self._config.sound_enabled:
+            self._chimes.play_start()
         if self._config.overlay_enabled:
             self.recording_requested.emit()
 
     def _handle_push_to_talk_stop(self) -> None:
         logger.info("Push-to-talk released.")
         self._audio.stop()
+        # Played after the stream stops so the chime never ends up in the recording.
+        if self._config.sound_enabled:
+            self._chimes.play_stop()
         audio_bytes = self._audio.get_wav_bytes()
         if not audio_bytes:
             self.toast_requested.emit("No speech detected", 2000)
