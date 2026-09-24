@@ -13,6 +13,7 @@ from whisperfree import models
 from whisperfree.audio import list_microphones
 from whisperfree.config import AppConfig
 from whisperfree.history import TranscriptionEntry, TranscriptionHistory
+from whisperfree.ui.widgets import asset_path as _asset_path
 from whisperfree.utils.logger import get_logger
 
 
@@ -697,11 +698,3 @@ def _friendly_username() -> str:
         return ""
 
 
-def _asset_path(name: str) -> Path:
-    # PyInstaller sets sys._MEIPASS to the temp extraction directory
-    import sys
-    if getattr(sys, "_MEIPASS", None):
-        base = Path(sys._MEIPASS) / "assets"
-    else:
-        base = Path(__file__).resolve().parent.parent / "assets"
-    return base / name

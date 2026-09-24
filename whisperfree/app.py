@@ -21,6 +21,7 @@ from whisperfree.overlay import OverlayWindow
 from whisperfree.paste import paste_text
 from whisperfree.transcribe import TranscriptionRouter
 from whisperfree.ui import ControlPanelWindow, TrayController
+from whisperfree.ui.theme import apply_theme
 from whisperfree.utils.logger import get_logger, setup_logging
 
 
@@ -189,6 +190,7 @@ def main() -> None:
 
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("WhisperFree")
+    apply_theme(app)
     if getattr(sys, "_MEIPASS", None):
         icon_path = Path(sys._MEIPASS) / "assets" / "app_icon.ico"
     else:
