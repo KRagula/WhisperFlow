@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+from PyQt6 import QtGui
+
 from whisperfree.history import TranscriptionEntry
 from whisperfree.ui.home import HomePage, greeting_for
 
@@ -65,3 +67,15 @@ def test_view_all_emits(qapp):
     page.view_all_requested.connect(lambda: fired.append(True))
     page.view_all_button.click()
     assert fired == [True]
+
+
+def test_show_event_refreshes_greeting_and_stats(qapp):
+    page = HomePage("Kanishka", [entry(24, words=10)], today=TODAY)
+    before_words = page.words_card.value_label.text()
+    before_streak = page.streak_card.value_label.text()
+
+    page.showEvent(QtGui.QShowEvent())
+
+    assert "Kanishka" in page.title_label.text()
+    assert page.words_card.value_label.text() == before_words
+    assert page.streak_card.value_label.text() == before_streak

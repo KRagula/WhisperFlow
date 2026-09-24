@@ -19,3 +19,6 @@ def _isolate_config_files(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path / "config-home")
     monkeypatch.setattr(config_module, "PROJECT_ENV_PATH", tmp_path / "project.env")
+    monkeypatch.setattr(config_module, "load_dotenv", lambda *a, **k: False)
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)

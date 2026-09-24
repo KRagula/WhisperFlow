@@ -214,7 +214,8 @@ class HistoryRow(QtWidgets.QFrame):
         self.text_label = make_label(self._text, "Body", wrap=True)
         self.text_label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         self.text_label.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.IBeamCursor))
-        layout.addWidget(self.text_label, 1)
+        self.text_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(self.text_label, 1, QtCore.Qt.AlignmentFlag.AlignTop)
 
         side = QtWidgets.QVBoxLayout()
         side.setSpacing(4)

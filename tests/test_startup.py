@@ -1,6 +1,7 @@
 import sys
 import uuid
 
+import dotenv
 import pytest
 
 from whisperfree import config as config_module
@@ -39,6 +40,7 @@ def test_resolve_api_key_reads_project_env(monkeypatch, tmp_path):
     env_file.write_text("WF_TEST_API_KEY=from-project-env\n", encoding="utf-8")
     monkeypatch.setattr(config_module, "PROJECT_ENV_PATH", env_file)
     monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path / "config")
+    monkeypatch.setattr(config_module, "load_dotenv", dotenv.load_dotenv)
     monkeypatch.setenv("WF_TEST_API_KEY", "placeholder")  # records original state for undo
     monkeypatch.delenv("WF_TEST_API_KEY")
     monkeypatch.chdir(tmp_path.parent)  # CWD is not the project
@@ -57,14 +59,46 @@ def value_name():
     name = f"WhisperFreeTest-{uuid.uuid4().hex[:8]}"
     yield name
     startup.set_enabled(False, name)
+    if sys.platform == "win32":
+        import winreg
+
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, startup.STARTUP_APPROVED_KEY, 0, winreg.KEY_SET_VALUE
+            ) as key:
+                try:
+                    winreg.DeleteValue(key, name)
+                except FileNotFoundError:
+                    pass
+        except FileNotFoundError:
+            pass
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows registry only")
 def test_registry_round_trip(value_name):
+    import winreg
+
     assert not startup.is_enabled(value_name)
+
+    with winreg.CreateKeyEx(
+        winreg.HKEY_CURRENT_USER, startup.STARTUP_APPROVED_KEY, 0, winreg.KEY_SET_VALUE
+    ) as approved_key:
+        winreg.SetValueEx(
+            approved_key,
+            value_name,
+            0,
+            winreg.REG_BINARY,
+            bytes([3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        )
+
     startup.set_enabled(True, value_name)
     assert startup.is_enabled(value_name)
     assert startup.read_command(value_name) == startup.launch_command()
+
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, startup.STARTUP_APPROVED_KEY) as approved_key:
+        with pytest.raises(FileNotFoundError):
+            winreg.QueryValueEx(approved_key, value_name)
+
     startup.set_enabled(False, value_name)
     assert not startup.is_enabled(value_name)
     startup.set_enabled(False, value_name)  # deleting twice is fine

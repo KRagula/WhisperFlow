@@ -98,3 +98,9 @@ def test_api_transcriber_omits_empty_prompt():
     api, transcriptions = _api_with_fake_client()
     api.transcribe(b"RIFF")
     assert "prompt" not in transcriptions.params
+
+
+def test_configure_app_disables_quit_on_last_window_closed(qapp):
+    qapp.setQuitOnLastWindowClosed(True)
+    app_module.configure_app(qapp)
+    assert qapp.quitOnLastWindowClosed() is False

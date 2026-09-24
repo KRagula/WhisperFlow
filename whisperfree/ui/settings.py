@@ -147,6 +147,11 @@ class SettingsPage(QtWidgets.QWidget):
         audio.body.addWidget(make_label("Audio", "SectionTitle"))
         self.mic_combo = QtWidgets.QComboBox()
         self.mic_combo.setMinimumWidth(240)
+        self.mic_combo.setMaximumWidth(320)
+        self.mic_combo.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.mic_combo.setMinimumContentsLength(20)
         self.refresh_mics_button = _button("Refresh", "SecondaryButton")
         audio.body.addWidget(
             SettingRow(

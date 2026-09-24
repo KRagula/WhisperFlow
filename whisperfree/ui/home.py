@@ -51,6 +51,7 @@ class HomePage(QtWidgets.QWidget):
         super().__init__(parent)
         self._entries: List[TranscriptionEntry] = list(entries)
         self._today = today
+        self._name = name
 
         content = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(content)
@@ -110,6 +111,12 @@ class HomePage(QtWidgets.QWidget):
         outer.addWidget(scroll_page(content))
 
         self._refresh()
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        greeting = greeting_for(datetime.now().hour)
+        self.title_label.setText(f"{greeting}, {self._name}" if self._name else greeting)
+        self._refresh()
+        super().showEvent(event)
 
     def add_entry(self, entry: TranscriptionEntry) -> None:
         self._entries.insert(0, entry)

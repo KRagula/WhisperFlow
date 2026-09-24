@@ -12,6 +12,7 @@ from whisperfree.utils.logger import get_logger
 logger = get_logger(__name__)
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+STARTUP_APPROVED_KEY = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
 VALUE_NAME = "WhisperFree"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER_SCRIPT = PROJECT_ROOT / "run_whisperfree.pyw"
@@ -70,6 +71,19 @@ def set_enabled(enabled: bool, value_name: str = VALUE_NAME) -> None:
                 winreg.DeleteValue(key, value_name)
             except FileNotFoundError:
                 pass
+    if enabled:
+        # Windows records a Task Manager "disable" here; without clearing it,
+        # the Run value alone won't launch the app at sign-in.
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, STARTUP_APPROVED_KEY, 0, winreg.KEY_SET_VALUE
+            ) as approved_key:
+                try:
+                    winreg.DeleteValue(approved_key, value_name)
+                except FileNotFoundError:
+                    pass
+        except FileNotFoundError:
+            pass
     logger.info("Launch on startup {}", "enabled" if enabled else "disabled")
 
 

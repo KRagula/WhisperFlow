@@ -43,6 +43,7 @@ class WhisperFreeController(QtCore.QObject):
         self._app = app
         self._config = config
         self._overlay = OverlayWindow()
+        self._overlay_enabled_applied = config.overlay_enabled
         if self._config.overlay_enabled:
             self._overlay.show_idle()
         else:
@@ -99,16 +100,20 @@ class WhisperFreeController(QtCore.QObject):
                 dictionary=self._dictionary,
             )
             self.history_entry_added.connect(self._panel_window.handle_history_entry)
+        if self._panel_window.isMinimized():
+            self._panel_window.showNormal()
         self._panel_window.show()
         self._panel_window.raise_()
         self._panel_window.activateWindow()
 
     def _handle_config_saved(self, config: AppConfig) -> None:
         logger.info("Configuration saved.")
-        if config.overlay_enabled:
-            self._overlay.show_idle()
-        else:
-            self._overlay.hide_overlay()
+        if config.overlay_enabled != self._overlay_enabled_applied:
+            self._overlay_enabled_applied = config.overlay_enabled
+            if config.overlay_enabled:
+                self._overlay.show_idle()
+            else:
+                self._overlay.hide_overlay()
 
     def _handle_level_update(self, value: float) -> None:
         self.level_changed.emit(value)
@@ -178,6 +183,19 @@ def _install_signal_handlers(controller: WhisperFreeController) -> None:
     signal.signal(signal.SIGTERM, lambda *_: controller.quit())
 
 
+def configure_app(app: QtWidgets.QApplication) -> None:
+    """Apply application-wide setup: name, theme, quit behaviour, and icon."""
+    app.setApplicationName("WhisperFree")
+    apply_theme(app)
+    app.setQuitOnLastWindowClosed(False)
+    if getattr(sys, "_MEIPASS", None):
+        icon_path = Path(sys._MEIPASS) / "assets" / "app_icon.ico"
+    else:
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "app_icon.ico"
+    if icon_path.exists():
+        app.setWindowIcon(QtGui.QIcon(str(icon_path)))  # type: ignore[name-defined]
+
+
 def main() -> None:
     """Launch the WhisperFree desktop app."""
     setup_logging()
@@ -189,14 +207,7 @@ def main() -> None:
         logger.warning("Could not refresh launch-on-startup entry: {}", exc)
 
     app = QtWidgets.QApplication(sys.argv)
-    app.setApplicationName("WhisperFree")
-    apply_theme(app)
-    if getattr(sys, "_MEIPASS", None):
-        icon_path = Path(sys._MEIPASS) / "assets" / "app_icon.ico"
-    else:
-        icon_path = Path(__file__).resolve().parent.parent / "assets" / "app_icon.ico"
-    if icon_path.exists():
-        app.setWindowIcon(QtGui.QIcon(str(icon_path)))  # type: ignore[name-defined]
+    configure_app(app)
 
     controller = WhisperFreeController(app, config)
     _install_signal_handlers(controller)

@@ -104,7 +104,7 @@ QTabBar::tab {{
 QTabBar::tab:hover {{ color: {TEXT}; }}
 QTabBar::tab:selected {{ color: {TEXT}; border-bottom: 2px solid {ACCENT}; }}
 
-QFrame#Chip {{ background: {ACCENT_SOFT}; border: none; border-radius: 14px; }}
+QFrame#Chip {{ background: {ACCENT_SOFT}; border: none; border-radius: 12px; }}
 QLabel#ChipText {{ color: {ACCENT}; font-weight: 500; }}
 QPushButton#ChipRemove {{ background: transparent; border: none; color: {ACCENT}; font-weight: 700; padding: 0 2px; }}
 QPushButton#ChipRemove:hover {{ color: {DANGER}; }}
