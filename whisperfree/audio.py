@@ -84,6 +84,12 @@ class AudioRecorder:
         """Return the linear multiplier derived from the configured gain in dB."""
         return float(10 ** (self._config.input_gain_db / 20.0))
 
+    @property
+    def last_duration(self) -> float:
+        """Seconds of audio captured by the current or most recent recording."""
+        with self._lock:
+            return self._frames_recorded / float(self._config.sample_rate)
+
     def start(self) -> None:
         """Begin streaming audio from the configured device."""
         with self._lock:

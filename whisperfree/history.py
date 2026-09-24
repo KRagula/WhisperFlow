@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import re
 import threading
@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 
 _WORD_PATTERN = re.compile(r"\b\w+\b", re.UNICODE)
 HISTORY_PATH = CONFIG_DIR / "history.jsonl"
+MIN_WPM_DURATION = 1.0  # seconds; shorter clips give meaningless words-per-minute
 
 
 def _ensure_history_dir() -> None:
@@ -39,13 +40,17 @@ class TranscriptionEntry:
     timestamp: datetime
     text: str
     words: int
+    duration: Optional[float] = None  # seconds of recorded audio, when known
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "timestamp": self.timestamp.isoformat(),
             "text": self.text,
             "words": self.words,
         }
+        if self.duration is not None:
+            data["duration"] = round(self.duration, 3)
+        return data
 
     @staticmethod
     def from_dict(data: dict) -> Optional["TranscriptionEntry"]:
@@ -56,10 +61,12 @@ class TranscriptionEntry:
                 timestamp = timestamp.replace(tzinfo=timezone.utc)
             text = str(data.get("text", ""))
             words = int(data.get("words", _word_count(text)))
+            raw_duration = data.get("duration")
+            duration = float(raw_duration) if raw_duration is not None else None
         except Exception as exc:  # pragma: no cover - defensive parsing
-            logger.warning("Skipping malformed history entry: %s (error=%s)", data, exc)
+            logger.warning("Skipping malformed history entry: {} (error={})", data, exc)
             return None
-        return TranscriptionEntry(timestamp=timestamp, text=text, words=words)
+        return TranscriptionEntry(timestamp=timestamp, text=text, words=words, duration=duration)
 
 
 class TranscriptionHistory:
@@ -70,10 +77,15 @@ class TranscriptionHistory:
         self._lock = threading.Lock()
         self._total_words: Optional[int] = None
 
-    def add_entry(self, text: str, timestamp: Optional[datetime] = None) -> TranscriptionEntry:
+    def add_entry(
+        self,
+        text: str,
+        timestamp: Optional[datetime] = None,
+        duration: Optional[float] = None,
+    ) -> TranscriptionEntry:
         """Append a transcription event to the history log."""
         ts = timestamp or datetime.now(timezone.utc)
-        entry = TranscriptionEntry(timestamp=ts, text=text, words=_word_count(text))
+        entry = TranscriptionEntry(timestamp=ts, text=text, words=_word_count(text), duration=duration)
         payload = json.dumps(entry.to_dict(), ensure_ascii=False)
         with self._lock:
             _ensure_history_dir()
@@ -147,4 +159,34 @@ class TranscriptionHistory:
             key = local_time.strftime("%Y-%m-%d")
             grouped.setdefault(key, []).append(entry)
         return grouped
+
+
+def day_streak(entries: Iterable[TranscriptionEntry], today: date) -> int:
+    """Consecutive local days with dictation, ending today (or yesterday if none yet today)."""
+    days = {entry.timestamp.astimezone().date() for entry in entries}
+    one_day = timedelta(days=1)
+    if today in days:
+        cursor = today
+    elif today - one_day in days:
+        cursor = today - one_day
+    else:
+        return 0
+    streak = 0
+    while cursor in days:
+        streak += 1
+        cursor -= one_day
+    return streak
+
+
+def average_wpm(entries: Iterable[TranscriptionEntry]) -> Optional[float]:
+    """Words per minute across entries with a known duration, or None if there are none."""
+    words = 0
+    seconds = 0.0
+    for entry in entries:
+        if entry.duration is not None and entry.duration >= MIN_WPM_DURATION:
+            words += entry.words
+            seconds += entry.duration
+    if seconds <= 0:
+        return None
+    return words / (seconds / 60.0)
 
